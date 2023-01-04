@@ -9,9 +9,9 @@ export type MessageEventDeferredState =
 
 export interface MessageEventDeferred extends Promise<void> {
   readonly state: MessageEventDeferredState;
+
   resolve(): void;
-  // deno-lint-ignore no-explicit-any
-  reject(reason?: any): void;
+  reject(requeue?: boolean): void;
   ignore(): void;
 }
 
@@ -28,10 +28,9 @@ export function messageEventDeferred(): MessageEventDeferred {
         state = "fulfilled";
         resolve();
       },
-      // deno-lint-ignore no-explicit-any
-      reject(reason?: any) {
+      reject(requeue?: boolean) {
         state = "rejected";
-        reject(reason);
+        reject(requeue ?? true);
       },
       ignore() {
         state = "ignored";
@@ -39,6 +38,7 @@ export function messageEventDeferred(): MessageEventDeferred {
       },
     };
   });
+
   Object.defineProperty(promise, "state", { get: () => state });
   return Object.assign(promise, methods) as MessageEventDeferred;
 }

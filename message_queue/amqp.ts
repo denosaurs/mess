@@ -7,16 +7,15 @@ import {
   connect,
 } from "https://deno.land/x/amqp@v0.21.0/mod.ts";
 
-import { delay } from "../deps.ts";
-import { isArrayBufferLike } from "../utils.ts";
 import { MessageEvent } from "./message_event.ts";
 import { MessageQueue, MessageQueueOptions } from "./message_queue.ts";
 
-export type AMQPMessageQueueOptions = MessageQueueOptions & {
+export type AMQPMessageQueueOptions<T> = MessageQueueOptions<T> & {
   connection?: AmqpConnectOptions | string;
 };
 
-export class AMQPMessageQueue extends MessageQueue {
+// deno-lint-ignore no-explicit-any
+export class AMQPMessageQueue<T = any> extends MessageQueue<T> {
   #connection?: AmqpConnection;
   #channel?: AmqpChannel;
   #initialized = false;
@@ -28,12 +27,12 @@ export class AMQPMessageQueue extends MessageQueue {
       this.#connection != undefined && this.#channel != undefined;
   }
 
-  constructor(name: string, options: AMQPMessageQueueOptions) {
+  constructor(name: string, options: AMQPMessageQueueOptions<T>) {
     super(name, options);
     this.#initialization = this.#initialize(options);
   }
 
-  async #initialize(options: AMQPMessageQueueOptions) {
+  async #initialize(options: AMQPMessageQueueOptions<T>) {
     // @ts-ignore This is actually ok, but technically not according to typescript
     this.#connection = await connect(options.connection);
     this.#connection.closed().then(() => this.#closed = true);
@@ -42,21 +41,18 @@ export class AMQPMessageQueue extends MessageQueue {
     this.#channel.closed().then(() => this.#closed = true);
     await this.#channel.declareQueue({ queue: this.name });
 
-    this.#initialized = true;
+    this.#channel.consume(
+      { queue: this.name, consumerTag: this.id },
+      this.#consume.bind(this),
+    );
 
-    while (this.#ready) {
-      await this.#channel.consume(
-        { queue: this.name, consumerTag: this.id },
-        this.#consume.bind(this),
-      );
-      await delay(this.pollRate);
-    }
+    this.#initialized = true;
   }
 
   async #consume(
     args: BasicDeliver,
     props: BasicProperties,
-    data: Uint8Array,
+    rawData: Uint8Array,
   ): Promise<void> {
     if (
       props.headers &&
@@ -79,6 +75,7 @@ export class AMQPMessageQueue extends MessageQueue {
       );
     }
 
+    let data: T | Uint8Array = rawData;
     if (this.encoderDecoder) {
       data = this.encoderDecoder.decode(data);
     }
@@ -87,15 +84,18 @@ export class AMQPMessageQueue extends MessageQueue {
       data = this.serializerDeserializer.deserialize(data);
     }
 
-    const event = new MessageEvent({
-      data,
+    const event = new MessageEvent<T>({
+      data: data as T,
       origin: args.consumerTag,
     });
 
     await this.emit("message", event);
 
+    let requeue = true;
     try {
       await event.deferred;
+    } catch (shouldRequeue) {
+      requeue = shouldRequeue;
     } finally {
       switch (event.deferred.state) {
         case "fulfilled": {
@@ -103,7 +103,7 @@ export class AMQPMessageQueue extends MessageQueue {
           break;
         }
         case "rejected": {
-          await this.#channel!.nack({ deliveryTag: args.deliveryTag });
+          await this.#channel!.nack({ deliveryTag: args.deliveryTag, requeue });
           break;
         }
         case "pending":
@@ -123,22 +123,18 @@ export class AMQPMessageQueue extends MessageQueue {
     this.#closed = true;
   }
 
-  async queueMessage(buffer: ArrayBufferLike): Promise<void>;
-  // deno-lint-ignore no-explicit-any
-  async queueMessage(message: any): Promise<void>;
-  // deno-lint-ignore no-explicit-any
-  async queueMessage(messageOrBuffer: ArrayBufferLike | any): Promise<void> {
+  async queueMessage(message: T): Promise<void> {
     // TODO: Break the message encoding out into a helper function
     let data: Uint8Array;
 
     if (this.serializerDeserializer) {
-      data = this.serializerDeserializer.serialize(messageOrBuffer);
+      data = this.serializerDeserializer.serialize(message);
     } else {
-      if (isArrayBufferLike(messageOrBuffer)) {
-        data = new Uint8Array(messageOrBuffer);
+      if (message instanceof Uint8Array) {
+        data = new Uint8Array(message);
       } else {
         throw new TypeError(
-          "Expected an ArrayBufferLike when calling queueMessage without an serializerDeserializer configured",
+          "Expected an Uint8Array when calling queueMessage without an serializerDeserializer configured",
         );
       }
     }

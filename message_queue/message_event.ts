@@ -8,8 +8,7 @@ export type MessageEventInit<T> = {
   origin: string;
 };
 
-// deno-lint-ignore no-explicit-any
-export class MessageEvent<T = any> {
+export class MessageEvent<T> {
   #data: T;
   #origin: string;
   #deferred: MessageEventDeferred;

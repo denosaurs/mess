@@ -2,11 +2,11 @@ import {
   deserializeAny,
   serializeAny,
 } from "https://raw.githubusercontent.com/MierenManz/v8_format/main/references/mod.ts";
-import { MessageSerializerDeserializer } from "./types.ts";
+import { SerializerDeserializer } from "./types.ts";
 
-const v8MessageSerializerDeserializer = {
+const v8SerializerDeserializer = {
   serialize: (value) => serializeAny(value),
   deserialize: (data) => deserializeAny(data),
-} satisfies MessageSerializerDeserializer;
+} satisfies SerializerDeserializer;
 
-export const { serialize, deserialize } = v8MessageSerializerDeserializer;
+export const { serialize, deserialize } = v8SerializerDeserializer;

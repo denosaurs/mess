@@ -1,4 +1,4 @@
-import type { MessageSerializerDeserializer } from "./types.ts";
+import type { SerializerDeserializer } from "./types.ts";
 
 // deno-lint-ignore no-explicit-any
 export let core: any;
@@ -17,9 +17,9 @@ if (Deno?.[Deno.internal]?.core) {
   throw new TypeError("Deno.core is not supported in this environment");
 }
 
-const denoMessageSerializerDeserializer = {
+const denoSerializerDeserializer = {
   serialize: (value) => core.serialize(value),
   deserialize: (data) => core.deserialize(data),
-} satisfies MessageSerializerDeserializer;
+} satisfies SerializerDeserializer;
 
-export const { serialize, deserialize } = denoMessageSerializerDeserializer;
+export const { serialize, deserialize } = denoSerializerDeserializer;
