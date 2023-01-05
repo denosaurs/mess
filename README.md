@@ -5,11 +5,29 @@
 [![checks](https://github.com/denosaurs/mess/actions/workflows/checks.yml/badge.svg)](https://github.com/denosaurs/mess/actions/workflows/checks.yml)
 [![License](https://img.shields.io/github/license/denosaurs/mess)](https://github.com/denosaurs/mess/blob/master/LICENSE)
 
-Modern messaging with multi-backend support and ergonomic interfaces.
+Mess is a modern, broker-agnostic message queue for use in a distributed
+environment. Currently, AMQP is supported, with plans to add support for other
+platforms such as Redis and MQTT in the future.
 
 ## Example
 
-...
+This example demonstrates how to use the AMQP message queue with the json
+serializer and deserializer:
+
+```ts
+import { AMQPMessageQueue } from "https://deno.land/x/mess/message_queue/amqp.ts";
+import * as json from "https://deno.land/x/mess/serializer_deserializer/json.ts";
+
+const queue = new AMQPMessageQueue("test", {
+  serializerDeserializer: json,
+  connection: Deno.env.get("AMQP"),
+});
+
+for await (const [event] of queue.on("message")) {
+  console.log(event.data);
+  event.deferred.resolve();
+}
+```
 
 ## Documentation
 
@@ -27,6 +45,6 @@ Check out the docs
 Pull request, issues and feedback are very welcome. Code style is formatted with
 `deno fmt` and commit messages are done following Conventional Commits spec.
 
-### Licence
+### License
 
 Copyright 2023, the Denosaurs team. All rights reserved. MIT license.
