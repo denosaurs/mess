@@ -1,7 +1,7 @@
 import {
   deserializeAny,
   serializeAny,
-} from "https://raw.githubusercontent.com/MierenManz/v8_format/main/references/mod.ts";
+} from "https://raw.githubusercontent.com/MierenManz/v8_format/8352edf/src/mod.ts";
 import { SerializerDeserializer } from "./types.ts";
 
 const v8SerializerDeserializer = {

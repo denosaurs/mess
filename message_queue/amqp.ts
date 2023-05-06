@@ -5,7 +5,7 @@ import {
   BasicDeliver,
   BasicProperties,
   connect,
-} from "https://deno.land/x/amqp@v0.21.0/mod.ts";
+} from "https://deno.land/x/amqp@v0.23.1/mod.ts";
 
 import { MessageEvent } from "./message_event.ts";
 import { MessageQueue, MessageQueueOptions } from "./message_queue.ts";
@@ -52,7 +52,7 @@ export class AMQPMessageQueue<T = any> extends MessageQueue<T> {
   async #consume(
     args: BasicDeliver,
     props: BasicProperties,
-    rawData: Uint8Array,
+    data: Uint8Array,
   ): Promise<void> {
     if (
       props.headers &&
@@ -62,7 +62,6 @@ export class AMQPMessageQueue<T = any> extends MessageQueue<T> {
       return;
     }
 
-    // TODO: Break the message decoding out into a helper function
     if (this.encoderDecoder?.contentEncoding !== props.contentEncoding) {
       throw new TypeError(
         `Expected message to have the contentEncoding ${this.encoderDecoder?.contentEncoding} but found ${props.contentEncoding}`,
@@ -75,17 +74,8 @@ export class AMQPMessageQueue<T = any> extends MessageQueue<T> {
       );
     }
 
-    let data: T | Uint8Array = rawData;
-    if (this.encoderDecoder) {
-      data = this.encoderDecoder.decode(data);
-    }
-
-    if (this.serializerDeserializer) {
-      data = this.serializerDeserializer.deserialize(data);
-    }
-
     const event = new MessageEvent<T>({
-      data: data as T,
+      data: this.decode(data),
       origin: args.consumerTag,
     });
 
@@ -103,7 +93,10 @@ export class AMQPMessageQueue<T = any> extends MessageQueue<T> {
           break;
         }
         case "rejected": {
-          await this.#channel!.nack({ deliveryTag: args.deliveryTag, requeue });
+          await this.#channel!.reject({
+            deliveryTag: args.deliveryTag,
+            requeue,
+          });
           break;
         }
         case "pending":
@@ -124,24 +117,7 @@ export class AMQPMessageQueue<T = any> extends MessageQueue<T> {
   }
 
   async queueMessage(message: T): Promise<void> {
-    // TODO: Break the message encoding out into a helper function
-    let data: Uint8Array;
-
-    if (this.serializerDeserializer) {
-      data = this.serializerDeserializer.serialize(message);
-    } else {
-      if (message instanceof Uint8Array) {
-        data = new Uint8Array(message);
-      } else {
-        throw new TypeError(
-          "Expected an Uint8Array when calling queueMessage without an serializerDeserializer configured",
-        );
-      }
-    }
-
-    if (this.encoderDecoder) {
-      data = this.encoderDecoder.encode(data);
-    }
+    const data = this.encode(message);
 
     if (this.#closed) {
       throw new Error("This AMQPMessageQueue has already been closed");
