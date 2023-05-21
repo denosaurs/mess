@@ -3,10 +3,10 @@ import * as deno from "../serializer_deserializer/deno.ts";
 
 const queue = new AMQPMessageQueue("test", {
   serializerDeserializer: deno,
-  connection: Deno.env.get("AMQP"),
+  connection: "amqp://guest:guest@localhost:5672",
 });
 
-for await (const [event] of queue.on("message")) {
+for await (const event of queue) {
   console.log(event.data);
-  event.deferred.resolve();
+  await event.deferred.resolve();
 }
