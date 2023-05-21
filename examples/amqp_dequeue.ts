@@ -1,4 +1,4 @@
-import { AMQPMessageQueue } from "../message_queue/amqp.ts";
+import { AMQPMessageQueue } from "../message_queue/implementations/amqp/mod.ts";
 import * as deno from "../serializer_deserializer/deno.ts";
 
 const queue = new AMQPMessageQueue("test", {
