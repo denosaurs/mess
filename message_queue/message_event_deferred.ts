@@ -10,31 +10,36 @@ export type MessageEventDeferredState =
 export interface MessageEventDeferred extends Promise<void> {
   readonly state: MessageEventDeferredState;
 
-  resolve(): void;
-  reject(requeue?: boolean): void;
-  ignore(): void;
+  resolve(): Promise<void>;
+  reject(requeue?: boolean): Promise<void>;
+  ignore(): Promise<void>;
 }
 
 /**
  * Creates a Promise with the `reject`, `resolve` and `ignore` functions placed as
  * methods on the promise object itself.
  */
-export function messageEventDeferred(): MessageEventDeferred {
+export function messageEventDeferred(
+  settle: Promise<void>,
+): MessageEventDeferred {
   let methods;
   let state: MessageEventDeferredState = "pending";
   const promise = new Promise<void>((resolve, reject) => {
     methods = {
-      resolve() {
+      async resolve() {
         state = "fulfilled";
         resolve();
+        await settle;
       },
-      reject(requeue?: boolean) {
+      async reject(requeue?: boolean) {
         state = "rejected";
         reject(requeue ?? true);
+        await settle;
       },
-      ignore() {
+      async ignore() {
         state = "ignored";
         resolve();
+        await settle;
       },
     };
   });

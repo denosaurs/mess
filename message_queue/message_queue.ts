@@ -1,4 +1,3 @@
-import { EventEmitter } from "../deps.ts";
 import { EncoderDecoder } from "../encoder_decoder/types.ts";
 import { SerializerDeserializer } from "../serializer_deserializer/types.ts";
 import { MessageEvent } from "./message_event.ts";
@@ -17,13 +16,9 @@ export type MaybeSerializerDeserializer<T> = T extends Uint8Array
   ? SerializerDeserializer<T> | undefined
   : SerializerDeserializer<T>;
 
-export type MessageQueueEvents<T> = {
-  "message": [MessageEvent<T>];
-};
-
 // deno-lint-ignore no-explicit-any
 export abstract class MessageQueue<T = any>
-  extends EventEmitter<MessageQueueEvents<T>> {
+  implements AsyncIterable<MessageEvent<T>> {
   #name: string;
   #encoderDecoder?: EncoderDecoder;
   #serializerDeserializer: MaybeSerializerDeserializer<T>;
@@ -46,8 +41,6 @@ export abstract class MessageQueue<T = any>
   }
 
   constructor(name: string, options: MessageQueueOptions<T>) {
-    super(options.maxListenersPerEvent ?? 1);
-
     this.#name = name;
     this.#encoderDecoder = options.encoderDecoder;
     this.#serializerDeserializer = options
@@ -93,4 +86,6 @@ export abstract class MessageQueue<T = any>
 
   abstract close(): Promise<void>;
   abstract queueMessage(message: T): Promise<void>;
+
+  abstract [Symbol.asyncIterator](): AsyncIterator<MessageEvent<T>>;
 }

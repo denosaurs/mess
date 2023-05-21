@@ -6,6 +6,7 @@ import {
 export type MessageEventInit<T> = {
   data: T;
   origin: string;
+  settle: Promise<void>;
 };
 
 export class MessageEvent<T> {
@@ -28,6 +29,6 @@ export class MessageEvent<T> {
   constructor(init: MessageEventInit<T>) {
     this.#data = init.data;
     this.#origin = init.origin;
-    this.#deferred = messageEventDeferred();
+    this.#deferred = messageEventDeferred(init.settle);
   }
 }

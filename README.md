@@ -15,17 +15,17 @@ This example demonstrates how to use the AMQP message queue with the json
 serializer and deserializer:
 
 ```ts
-import { AMQPMessageQueue } from "https://deno.land/x/mess/message_queue/amqp.ts";
+import { AMQPMessageQueue } from "https://deno.land/x/mess/message_queue/implementations/amqp/mod.ts";
 import * as json from "https://deno.land/x/mess/serializer_deserializer/json.ts";
 
 const queue = new AMQPMessageQueue("test", {
-  serializerDeserializer: json,
-  connection: Deno.env.get("AMQP"),
+  serializerDeserializer: deno,
+  connection: "amqp://guest:guest@localhost:5672",
 });
 
-for await (const [event] of queue.on("message")) {
+for await (const event of queue) {
   console.log(event.data);
-  event.deferred.resolve();
+  await event.deferred.resolve();
 }
 ```
 
