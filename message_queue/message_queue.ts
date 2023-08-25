@@ -2,15 +2,12 @@ import { EncoderDecoder } from "../encoder_decoder/types.ts";
 import { SerializerDeserializer } from "../serializer_deserializer/types.ts";
 import { MessageEvent } from "./message_event.ts";
 
-export type MessageQueueOptions<T> =
-  & (T extends Uint8Array
-    ? { serializerDeserializer?: SerializerDeserializer<T> }
-    : { serializerDeserializer: SerializerDeserializer<T> })
-  & {
-    encoderDecoder?: EncoderDecoder;
-    maxListenersPerEvent?: number;
-    id?: string;
-  };
+export type MessageQueueOptions<T> = {
+  serializerDeserializer?: SerializerDeserializer<T>;
+} & {
+  encoderDecoder?: EncoderDecoder;
+  id?: string;
+};
 
 export type MaybeSerializerDeserializer<T> = T extends Uint8Array
   ? SerializerDeserializer<T> | undefined
@@ -40,7 +37,7 @@ export abstract class MessageQueue<T = any>
     return this.#id;
   }
 
-  constructor(name: string, options: MessageQueueOptions<T>) {
+  constructor(name: string, options: MessageQueueOptions<T> = {}) {
     this.#name = name;
     this.#encoderDecoder = options.encoderDecoder;
     this.#serializerDeserializer = options
@@ -85,7 +82,7 @@ export abstract class MessageQueue<T = any>
   }
 
   abstract close(): Promise<void>;
-  abstract queueMessage(message: T): Promise<void>;
+  abstract queueMessage(message: T, options?: unknown): Promise<void>;
 
   abstract [Symbol.asyncIterator](): AsyncIterator<MessageEvent<T>>;
 }
